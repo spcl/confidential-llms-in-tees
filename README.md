@@ -181,20 +181,20 @@ cd llm && source ../miniforge3/bin/activate && conda activate py310 && source to
 This will generate log files which can be processed and plotted by `traces_parser.py`. It accepts two files with traces that correspond to two compared systems.
 
 ## GPU
-GPUs require vLLM. Follow their installation instructions to enable them on your system.
+GPUs require vLLM. Follow (their installation instructions)[https://github.com/vllm-project/vllm] to enable them on your system.
 You can then run the benchmark using:
 ```
 ./benchmark_vllm.sh
 ```
-You can parse these using `parse.py` and plot using `plot_GPUs.py`.
+You can parse the produced logs using `parse.py` and plot using `plot_GPUs.py` (modify inside the names of your CSVs).
 
 ## RAG
-Enter the RAG directory and apply the patch:
+Make sure you have your submodules initialized. Then, enter the RAG directory and apply the patch:
 ```
 cd RAG/beir
 git apply ../beir.patch
 ```
-Then start the elasticsearch database:
+Start the elasticsearch database:
 ```
 cd RAG
 docker compose up elasticsearch
