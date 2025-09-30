@@ -1,0 +1,104 @@
+diff --git a/examples/cpu/inference/python/llm/Dockerfile b/examples/cpu/inference/python/llm/Dockerfile
+index f0cb27c54..aaa8aa522 100644
+--- a/examples/cpu/inference/python/llm/Dockerfile
++++ b/examples/cpu/inference/python/llm/Dockerfile
+@@ -64,4 +64,5 @@ RUN . ./miniforge3/bin/activate && \
+     conda clean -a -y && \
+     sudo mv ./oneCCL_release /opt/oneCCL && \
+     sudo chown -R root:root /opt/oneCCL && \
+-    sed -i "s|ONECCL_PATH=.*|ONECCL_PATH=/opt/oneCCL|" ./tools/env_activate.sh
++    sed -i "s|ONECCL_PATH=.*|ONECCL_PATH=/opt/oneCCL|" ./tools/env_activate.sh && \
++    pip install "numpy<2.0.0"
+diff --git a/examples/cpu/inference/python/llm/distributed/run_generation_with_deepspeed.py b/examples/cpu/inference/python/llm/distributed/run_generation_with_deepspeed.py
+index e214aa862..41c290f51 100644
+--- a/examples/cpu/inference/python/llm/distributed/run_generation_with_deepspeed.py
++++ b/examples/cpu/inference/python/llm/distributed/run_generation_with_deepspeed.py
+@@ -213,10 +213,10 @@ world_size = get_int_from_env(["WORLD_SIZE", "PMI_SIZE"], "1")
+ deepspeed.init_distributed(get_accelerator().communication_backend_name())
+ 
+ 
+-def print_rank0(*msg):
++def print_rank0(*msg, **kwargs):
+     if local_rank != 0:
+         return
+-    print(*msg)
++    print(*msg, **kwargs)
+ 
+ 
+ # Model loading and instantiating on GPUs
+@@ -613,6 +613,7 @@ def generate():
+ 
+ 
+ def trace_handler(prof):
++    prof.export_chrome_trace(f"/home/ubuntu/.cache/trace_{local_rank}.json")
+     print(prof.key_averages().table(sort_by="self_cpu_time_total", row_limit=-1))
+ 
+ 
+@@ -645,6 +646,10 @@ else:
+             activities=[torch.profiler.ProfilerActivity.CPU],
+             schedule=torch.profiler.schedule(wait=1, warmup=3, active=1),
+             on_trace_ready=trace_handler,
++            with_modules=True,
++            with_stack=True,
++            record_shapes=True,
++            profile_memory=True,
+         ) as prof:
+             for i in range(5):
+                 gen_ids, outputs = generate()
+@@ -679,3 +684,10 @@ else:
+         print_rank0("Average 2... latency: %.3f sec." % average_2n_latency)
+         print_rank0("P90 2... latency: %.3f sec." % p90_latency)
+         print_rank0("P99 2... latency: %.3f sec." % p99_latency)
++        print_rank0("token times:")
++        for ta in total_list:
++            print_rank0(ta[0], end="")
++            for t in ta[1:]:
++                print_rank0(", ", end=str(t))
++            print_rank0()
++        print_rank0("end token times")
+\ No newline at end of file
+diff --git a/examples/cpu/inference/python/llm/single_instance/run_generation.py b/examples/cpu/inference/python/llm/single_instance/run_generation.py
+index 852684fda..9eb254b65 100644
+--- a/examples/cpu/inference/python/llm/single_instance/run_generation.py
++++ b/examples/cpu/inference/python/llm/single_instance/run_generation.py
+@@ -345,3 +345,10 @@ if args.benchmark:
+         print("Average 2... latency: %.3f sec." % average_2n_latency)
+         print("P90 2... latency: %.3f sec." % p90_latency)
+         print("P99 2... latency: %.3f sec." % p99_latency)
++        print("token times:")
++        for ta in total_list:
++            print(ta[0], end="")
++            for t in ta[1:]:
++                print(", ", end=str(t))
++            print()
++        print("end token times")
+\ No newline at end of file
+diff --git a/examples/cpu/inference/python/llm/single_instance/run_quantization.py b/examples/cpu/inference/python/llm/single_instance/run_quantization.py
+index 594e0cd3c..02be9b635 100644
+--- a/examples/cpu/inference/python/llm/single_instance/run_quantization.py
++++ b/examples/cpu/inference/python/llm/single_instance/run_quantization.py
+@@ -936,3 +936,10 @@ if args.benchmark:
+         print("Average 2... latency: %.3f sec." % average_2n_latency)
+         print("P90 2... latency: %.3f sec." % p90_latency)
+         print("P99 2... latency: %.3f sec." % p99_latency)
++        print("token times:")
++        for ta in total_list:
++            print(ta[0], end="")
++            for t in ta[1:]:
++                print(", ", end=str(t))
++            print()
++        print("end token times")
+diff --git a/examples/cpu/inference/python/llm/tools/env_setup.sh b/examples/cpu/inference/python/llm/tools/env_setup.sh
+index 1c2497afd..37c9c6af8 100644
+--- a/examples/cpu/inference/python/llm/tools/env_setup.sh
++++ b/examples/cpu/inference/python/llm/tools/env_setup.sh
+@@ -81,7 +81,8 @@ if [ $((${MODE} & 0x02)) -ne 0 ]; then
+     fi
+ 
+     # Install deps
+-    conda install -y cmake ninja unzip
++    conda install -y -c conda-forge "cmake>=3.5,<4"
++    conda install -y ninja unzip
+ 
+     echo "#!/bin/bash" > ${AUX_INSTALL_SCRIPT}
+     if [ $((${MODE} & 0x04)) -ne 0 ]; then

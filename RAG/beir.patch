@@ -1,0 +1,290 @@
+diff --git a/examples/benchmarking/benchmark_bm25.py b/examples/benchmarking/benchmark_bm25.py
+index 5469569..a41c27e 100644
+--- a/examples/benchmarking/benchmark_bm25.py
++++ b/examples/benchmarking/benchmark_bm25.py
+@@ -3,6 +3,7 @@ import logging
+ import os
+ import pathlib
+ import random
++import torch
+ 
+ from beir import LoggingHandler, util
+ from beir.datasets.data_loader import GenericDataLoader
+@@ -10,14 +11,16 @@ from beir.retrieval.evaluation import EvaluateRetrieval
+ from beir.retrieval.search.lexical import BM25Search as BM25
+ 
+ random.seed(42)
++torch.manual_seed(42)
++ITERATIONS = 10
+ 
+ #### Just some code to print debug information to stdout
+-logging.basicConfig(
+-    format="%(asctime)s - %(message)s",
+-    datefmt="%Y-%m-%d %H:%M:%S",
+-    level=logging.INFO,
+-    handlers=[LoggingHandler()],
+-)
++# logging.basicConfig(
++#     format="%(asctime)s - %(message)s",
++#     datefmt="%Y-%m-%d %H:%M:%S",
++#     level=logging.INFO,
++#     handlers=[LoggingHandler(), logging.FileHandler("benchmark_bm25.log")],
++# )
+ 
+ #### /print debug information to stdout
+ 
+@@ -46,7 +49,7 @@ for corpus_id in random.sample(remaining_corpus, sample):
+     corpus_new[corpus_id] = corpus[corpus_id]
+ 
+ #### Provide parameters for Elasticsearch
+-hostname = "desktop-158.ukp.informatik.tu-darmstadt.de:9200"
++hostname = "localhost:9200"
+ index_name = dataset
+ model = BM25(index_name=index_name, hostname=hostname)
+ bm25 = EvaluateRetrieval(model)
+@@ -55,21 +58,22 @@ bm25 = EvaluateRetrieval(model)
+ bm25.retriever.index(corpus_new)
+ 
+ #### Saving benchmark times
+-time_taken_all = {}
+-
+-for query_id in query_ids:
+-    query = queries[query_id]
+-
+-    #### Measure time to retrieve top-10 BM25 documents using single query latency
+-    start = datetime.datetime.now()
+-    results = bm25.retriever.es.lexical_search(text=query, top_hits=10)
+-    end = datetime.datetime.now()
+-
+-    #### Measuring time taken in ms (milliseconds)
+-    time_taken = end - start
+-    time_taken = time_taken.total_seconds() * 1000
+-    time_taken_all[query_id] = time_taken
+-    logging.info(f"{query_id}: {query} {time_taken:.2f}ms")
+-
+-time_taken = list(time_taken_all.values())
+-logging.info(f"Average time taken: {sum(time_taken) / len(time_taken_all):.2f}ms")
++for iteration in range(ITERATIONS):
++    time_taken_all = {}
++
++    for query_id in query_ids:
++        query = queries[query_id]
++
++        #### Measure time to retrieve top-10 BM25 documents using single query latency
++        start = datetime.datetime.now()
++        results = bm25.retriever.es.lexical_search(text=query, top_hits=10)
++        end = datetime.datetime.now()
++
++        #### Measuring time taken in ms (milliseconds)
++        time_taken = end - start
++        time_taken = time_taken.total_seconds() * 1000
++        time_taken_all[query_id] = time_taken
++        #logging.info(f"{query_id}: {query} [{iteration}:{time_taken:.2f}ms]")
++    
++    time_taken = list(time_taken_all.values())
++    print(f"Average time taken: {iteration}:{sum(time_taken) / len(time_taken_all):.2f}ms")
+diff --git a/examples/benchmarking/benchmark_bm25_ce_reranking.py b/examples/benchmarking/benchmark_bm25_ce_reranking.py
+index 7235446..30f0cf5 100644
+--- a/examples/benchmarking/benchmark_bm25_ce_reranking.py
++++ b/examples/benchmarking/benchmark_bm25_ce_reranking.py
+@@ -4,6 +4,7 @@ import os
+ import pathlib
+ import random
+ from operator import itemgetter
++import torch
+ 
+ from beir import LoggingHandler, util
+ from beir.datasets.data_loader import GenericDataLoader
+@@ -12,13 +13,15 @@ from beir.retrieval.evaluation import EvaluateRetrieval
+ from beir.retrieval.search.lexical import BM25Search as BM25
+ 
+ random.seed(42)
++torch.manual_seed(42)
++ITERATIONS = 10
+ 
+ #### Just some code to print debug information to stdout
+ logging.basicConfig(
+     format="%(asctime)s - %(message)s",
+     datefmt="%Y-%m-%d %H:%M:%S",
+     level=logging.INFO,
+-    handlers=[LoggingHandler()],
++    handlers=[LoggingHandler(), logging.FileHandler("benchmark_bm25_ce_reranking.log")],
+ )
+ 
+ #### /print debug information to stdout
+@@ -49,7 +52,7 @@ for corpus_id in random.sample(remaining_corpus, sample):
+     corpus_new[corpus_id] = corpus[corpus_id]
+ 
+ #### Provide parameters for Elasticsearch
+-hostname = "desktop-158.ukp.informatik.tu-darmstadt.de:9200"
++hostname = "localhost:9200"
+ index_name = dataset
+ model = BM25(index_name=index_name, hostname=hostname)
+ bm25 = EvaluateRetrieval(model)
+@@ -61,27 +64,28 @@ bm25.retriever.index(corpus_new)
+ reranker = CrossEncoder("cross-encoder/ms-marco-electra-base")
+ 
+ #### Saving benchmark times
+-time_taken_all = {}
+-
+-for query_id in query_ids:
+-    query = queries[query_id]
+-
+-    #### Measure time to retrieve top-100 BM25 documents using single query latency
+-    start = datetime.datetime.now()
+-    results = bm25.retriever.es.lexical_search(text=query, top_hits=100)
+-
+-    #### Measure time to rerank top-100 BM25 documents using CE
+-    sentence_pairs = [[queries[query_id], corpus_texts[hit[0]]] for hit in results["hits"]]
+-    scores = reranker.predict(sentence_pairs, batch_size=100, show_progress_bar=False)
+-    hits = {results["hits"][idx][0]: scores[idx] for idx in range(len(scores))}
+-    sorted_results = {k: v for k, v in sorted(hits.items(), key=itemgetter(1), reverse=True)}
+-    end = datetime.datetime.now()
+-
+-    #### Measuring time taken in ms (milliseconds)
+-    time_taken = end - start
+-    time_taken = time_taken.total_seconds() * 1000
+-    time_taken_all[query_id] = time_taken
+-    logging.info(f"{query_id}: {query} {time_taken:.2f}ms")
+-
+-time_taken = list(time_taken_all.values())
+-logging.info(f"Average time taken: {sum(time_taken) / len(time_taken_all):.2f}ms")
++for iteration in range(ITERATIONS):
++    time_taken_all = {}
++
++    for query_id in query_ids:
++        query = queries[query_id]
++
++        #### Measure time to retrieve top-100 BM25 documents using single query latency
++        start = datetime.datetime.now()
++        results = bm25.retriever.es.lexical_search(text=query, top_hits=100)
++
++        #### Measure time to rerank top-100 BM25 documents using CE
++        sentence_pairs = [[queries[query_id], corpus_texts[hit[0]]] for hit in results["hits"]]
++        scores = reranker.predict(sentence_pairs, batch_size=100, show_progress_bar=False)
++        hits = {results["hits"][idx][0]: scores[idx] for idx in range(len(scores))}
++        sorted_results = {k: v for k, v in sorted(hits.items(), key=itemgetter(1), reverse=True)}
++        end = datetime.datetime.now()
++
++        #### Measuring time taken in ms (milliseconds)
++        time_taken = end - start
++        time_taken = time_taken.total_seconds() * 1000
++        time_taken_all[query_id] = time_taken
++        # logging.info(f"{query_id}: {query} [{iteration}:{time_taken:.2f}ms]")
++
++    time_taken = list(time_taken_all.values())
++    logging.info(f"Average time taken: {iteration}:{sum(time_taken) / len(time_taken_all):.2f}ms")
+diff --git a/examples/benchmarking/benchmark_sbert.py b/examples/benchmarking/benchmark_sbert.py
+index 4fa06e7..aa255a9 100644
+--- a/examples/benchmarking/benchmark_sbert.py
++++ b/examples/benchmarking/benchmark_sbert.py
+@@ -1,9 +1,9 @@
+-import datetime
++import time
+ import logging
+ import os
+ import pathlib
+ import sys
+-
++import random
+ import numpy as np
+ import torch
+ 
+@@ -12,12 +12,16 @@ from beir.datasets.data_loader import GenericDataLoader
+ from beir.retrieval import models
+ from beir.retrieval.search.dense import util as utils
+ 
++random.seed(42)
++torch.manual_seed(42)
++ITERATIONS = 10
++
+ #### Just some code to print debug information to stdout
+ logging.basicConfig(
+     format="%(asctime)s - %(message)s",
+     datefmt="%Y-%m-%d %H:%M:%S",
+     level=logging.INFO,
+-    handlers=[LoggingHandler()],
++    handlers=[LoggingHandler(), logging.FileHandler("benchmark_sbert.log")],
+ )
+ #### /print debug information to stdout
+ 
+@@ -33,7 +37,7 @@ corpus_ids, query_ids = list(corpus), list(queries)
+ 
+ #### For benchmarking using dense models, you can take any 1M documents, as it doesnt matter which documents you chose.
+ #### For simplicity, we take the first 1M documents.
+-number_docs = 1000000
++number_docs = 10000
+ reduced_corpus = [corpus[corpus_id] for corpus_id in corpus_ids[:number_docs]]
+ 
+ #### Dense retriever models
+@@ -59,37 +63,39 @@ else:
+     corpus_embs = model.encode_corpus(reduced_corpus, batch_size=128, convert_to_tensor=True)
+ 
+ #### Saving benchmark times
+-time_taken_all = {}
+-
+-for query_id in query_ids:
+-    query = queries[query_id]
+-
+-    #### Compute query embedding and retrieve similar scores using dot-product
+-    start = datetime.datetime.now()
+-    if normalize:
+-        query_emb = model.encode_queries(
+-            [query],
+-            batch_size=1,
+-            convert_to_tensor=True,
+-            normalize_embeddings=True,
+-            show_progress_bar=False,
+-        )
+-    else:
+-        query_emb = model.encode_queries([query], batch_size=1, convert_to_tensor=True, show_progress_bar=False)
+-
+-    #### Dot product for normalized embeddings is equal to cosine similarity
+-    sim_scores = utils.dot_score(query_emb, corpus_embs)
+-    sim_scores_top_k_values, sim_scores_top_k_idx = torch.topk(sim_scores, 10, dim=1, largest=True, sorted=True)
+-    end = datetime.datetime.now()
+-
+-    #### Measuring time taken in ms (milliseconds)
+-    time_taken = end - start
+-    time_taken = time_taken.total_seconds() * 1000
+-    time_taken_all[query_id] = time_taken
+-    logging.info(f"{query_id}: {query} {time_taken:.2f}ms")
+-
+-time_taken = list(time_taken_all.values())
+-logging.info(f"Average time taken: {sum(time_taken) / len(time_taken_all):.2f}ms")
++for iteration in range(ITERATIONS):
++    time_taken_all = {}
++
++    for query_id in query_ids:
++        query = queries[query_id]
++
++        #### Compute query embedding and retrieve similar scores using dot-product
++        start = time.perf_counter()
++        if normalize:
++            query_emb = model.encode_queries(
++                [query],
++                batch_size=1,
++                convert_to_tensor=True,
++                normalize_embeddings=True,
++                show_progress_bar=False,
++            )
++        else:
++            query_emb = model.encode_queries([query], batch_size=1, convert_to_tensor=True, show_progress_bar=False)
++
++        #### Dot product for normalized embeddings is equal to cosine similarity
++        intermediate = time.perf_counter()
++        sim_scores = utils.dot_score(query_emb, corpus_embs)
++        intermediate2 = time.perf_counter()
++        sim_scores_top_k_values, sim_scores_top_k_idx = torch.topk(sim_scores, 10, dim=1, largest=True, sorted=True)
++        end = time.perf_counter()
++
++        #### Measuring time taken in ms (milliseconds)
++        time_taken = (end - start) * 1000
++        time_taken_all[query_id] = time_taken
++        # logging.info(f"{query_id}: {query} [{iteration}:{(intermediate - start)*1000}:{(intermediate2 - intermediate)*1000}:{(end - intermediate2)*1000}ms]")
++
++    time_taken = list(time_taken_all.values())
++    logging.info(f"Average time taken: {iteration}:{sum(time_taken) / len(time_taken_all):.2f}ms")   
+ 
+ #### Measuring Index size consumed by document embeddings
+ corpus_embs = corpus_embs.cpu()

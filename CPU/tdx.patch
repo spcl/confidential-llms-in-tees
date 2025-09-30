@@ -1,0 +1,13 @@
+diff --git a/guest-tools/image/create-td-image.sh b/guest-tools/image/create-td-image.sh
+index 0d6de5e..1bf3d7a 100755
+--- a/guest-tools/image/create-td-image.sh
++++ b/guest-tools/image/create-td-image.sh
+@@ -33,7 +33,7 @@ if [[ "${TDX_SETUP_INTEL_KERNEL}" == "1" ]]; then
+ else
+     GUEST_IMG="tdx-guest-ubuntu-24.04-generic.qcow2"
+ fi
+-SIZE=50
++SIZE=300
+ GUEST_USER=${GUEST_USER:-"tdx"}
+ GUEST_PASSWORD=${GUEST_PASSWORD:-"123456"}
+ GUEST_HOSTNAME=${GUEST_HOSTNAME:-"tdx-guest"}

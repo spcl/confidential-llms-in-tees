@@ -1,0 +1,15 @@
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.2
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+    ports:
+      - "9200:9200"
+    restart: unless-stopped
+  rag:
+    build: .
+    volumes:
+      - .:/app 
+    network_mode: host
+    privileged: true

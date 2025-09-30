@@ -1,0 +1,142 @@
+<domain type='kvm' xmlns:qemu='http://libvirt.org/schemas/domain/qemu/1.0'>
+  <name>tdx</name>
+  <memory unit='GiB'>200</memory>
+  <memoryBacking>
+    <source type="anonymous"/>
+    <access mode="private"/>
+  </memoryBacking>
+  <vcpu placement="static" cpuset='0-59'>60</vcpu>
+  <cputune>
+    <vcpupin vcpu='0' cpuset='0'/>
+    <vcpupin vcpu='1' cpuset='1'/>
+    <vcpupin vcpu='2' cpuset='2'/>  
+    <vcpupin vcpu='3' cpuset='3'/>
+    <vcpupin vcpu='4' cpuset='4'/>
+    <vcpupin vcpu='5' cpuset='5'/>
+    <vcpupin vcpu='6' cpuset='6'/>
+    <vcpupin vcpu='7' cpuset='7'/>
+    <vcpupin vcpu='8' cpuset='8'/>
+    <vcpupin vcpu='9' cpuset='9'/>
+    <vcpupin vcpu='10' cpuset='10'/>
+    <vcpupin vcpu='11' cpuset='11'/>
+    <vcpupin vcpu='12' cpuset='12'/>
+    <vcpupin vcpu='13' cpuset='13'/>
+    <vcpupin vcpu='14' cpuset='14'/>
+    <vcpupin vcpu='15' cpuset='15'/>
+    <vcpupin vcpu='16' cpuset='16'/>
+    <vcpupin vcpu='17' cpuset='17'/>
+    <vcpupin vcpu='18' cpuset='18'/>
+    <vcpupin vcpu='19' cpuset='19'/>
+    <vcpupin vcpu='20' cpuset='20'/>
+    <vcpupin vcpu='21' cpuset='21'/>
+    <vcpupin vcpu='22' cpuset='22'/>
+    <vcpupin vcpu='23' cpuset='23'/>
+    <vcpupin vcpu='24' cpuset='24'/>
+    <vcpupin vcpu='25' cpuset='25'/>
+    <vcpupin vcpu='26' cpuset='26'/>
+    <vcpupin vcpu='27' cpuset='27'/>
+    <vcpupin vcpu='28' cpuset='28'/>
+    <vcpupin vcpu='29' cpuset='29'/>
+    <vcpupin vcpu='30' cpuset='30'/>
+    <vcpupin vcpu='31' cpuset='31'/>
+    <vcpupin vcpu='32' cpuset='32'/>
+    <vcpupin vcpu='33' cpuset='33'/>
+    <vcpupin vcpu='34' cpuset='34'/>
+    <vcpupin vcpu='35' cpuset='35'/>
+    <vcpupin vcpu='36' cpuset='36'/>
+    <vcpupin vcpu='37' cpuset='37'/>
+    <vcpupin vcpu='38' cpuset='38'/>
+    <vcpupin vcpu='39' cpuset='39'/>
+    <vcpupin vcpu='40' cpuset='40'/>
+    <vcpupin vcpu='41' cpuset='41'/>
+    <vcpupin vcpu='42' cpuset='42'/>
+    <vcpupin vcpu='43' cpuset='43'/>
+    <vcpupin vcpu='44' cpuset='44'/>
+    <vcpupin vcpu='45' cpuset='45'/>
+    <vcpupin vcpu='46' cpuset='46'/>
+    <vcpupin vcpu='47' cpuset='47'/>
+    <vcpupin vcpu='48' cpuset='48'/>
+    <vcpupin vcpu='49' cpuset='49'/>
+    <vcpupin vcpu='50' cpuset='50'/>
+    <vcpupin vcpu='51' cpuset='51'/>
+    <vcpupin vcpu='52' cpuset='52'/>
+    <vcpupin vcpu='53' cpuset='53'/>
+    <vcpupin vcpu='54' cpuset='54'/>
+    <vcpupin vcpu='55' cpuset='55'/>
+    <vcpupin vcpu='56' cpuset='56'/>
+    <vcpupin vcpu='57' cpuset='57'/>
+    <vcpupin vcpu='58' cpuset='58'/>
+    <vcpupin vcpu='59' cpuset='59'/>
+  </cputune>
+  <numatune>
+    <memory mode='strict' nodeset='0'/>
+    <memnode cellid='0' mode='strict' nodeset='0'/>
+  </numatune>
+  <os>
+    <type arch='x86_64' machine='q35'>hvm</type>
+    <loader>/usr/share/qemu/OVMF.fd</loader>
+    <boot dev='hd'/>
+  </os>
+  <features>
+    <acpi/>
+    <apic/>
+    <ioapic driver='qemu'/>
+  </features>
+  <clock offset='utc'>
+    <timer name='hpet' present='no'/>
+  </clock>
+  <on_poweroff>destroy</on_poweroff>
+  <on_reboot>restart</on_reboot>
+  <on_crash>destroy</on_crash>
+  <pm>
+    <suspend-to-mem enable='no'/>
+    <suspend-to-disk enable='no'/>
+  </pm>
+  <cpu mode='host-passthrough'>
+    <topology sockets='1' dies='1' cores='60' threads='1'/>
+    <cache mode='passthrough'/>
+    <!-- Disable AMX within VM -->
+    <!-- <feature policy="disable" name="amx-tile"/>
+    <feature policy="disable" name="amx-bf16"/>
+    <feature policy="disable" name="amx-int8"/> -->
+    <numa>
+      <cell id='0' cpus='0-59' memory='200' unit='GiB'>
+        <distances>
+          <sibling id='0' value='10'/>
+        </distances>
+      </cell>
+    </numa>
+  </cpu>
+  <devices>
+    <emulator>/usr/bin/qemu-system-x86_64</emulator>
+    <disk type="file" device="disk">
+      <driver name="qemu" type="qcow2"/>
+      <source file="/var/lib/libvirt/images/tdx-guest-ubuntu-24.04-generic.qcow2"/>
+      <target dev="vda" bus="virtio"/>
+    </disk>
+    <console type='pty'>
+      <target type='virtio' port='1'/>
+    </console>
+    <channel type='unix'>
+      <source mode='bind'/>
+      <target type='virtio' name='org.qemu.guest_agent.0'/>
+    </channel>
+    <vsock model='virtio'>
+      <cid auto='yes' address='3'/>
+      <address type='pci' domain='0x0000' bus='0x05' slot='0x00' function='0x0'/>
+    </vsock>
+  </devices>
+  <allowReboot value='no'/>
+  <launchSecurity type='tdx'>
+    <policy>0x10000000</policy>
+    <quoteGenerationService>
+      <SocketAddress type='vsock' cid='3' port='4050'/>
+    </quoteGenerationService>
+  </launchSecurity>
+  <qemu:commandline>
+    <qemu:arg value='-device'/>
+    <qemu:arg value='virtio-net-pci,netdev=nic0,bus=pcie.0,addr=0x5'/>
+    <qemu:arg value='-netdev'/>
+    <qemu:arg value='user,id=nic0,hostfwd=tcp::10022-:22,hostfwd=tcp::8501-:8501'/>
+  </qemu:commandline>
+</domain>

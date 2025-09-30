@@ -1,0 +1,15 @@
+[submodule "intel-extension-for-pytorch"]
+	path = CPU/intel-extension-for-pytorch
+	url = https://github.com/intel/intel-extension-for-pytorch.git
+	branch = release/2.3
+[submodule "tdx"]
+	path = CPU/tdx
+	url = https://github.com/canonical/tdx.git
+	branch = noble-24.04
+[submodule "gramine"]
+	path = CPU/gramine
+	url = https://github.com/gramineproject/gramine.git
+	branch = v1.7
+[submodule "RAG/beir"]
+	path = RAG/beir
+	url = https://github.com/beir-cellar/beir

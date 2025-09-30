@@ -1,0 +1,12 @@
+--- /home/ubuntu/miniconda3/envs/py310/lib/python3.10/site-packages/torch/utils/hipify/cuda_to_hip_mappings.py  2024-06-15 00:26:02.184091820 +0000
++++ /home/ubuntu/miniconda3/envs/py310/lib/python3.10/site-packages/torch/utils/hipify/cuda_to_hip_mappings.py  2024-06-15 00:25:51.472091183 +0000
+@@ -31,7 +31,8 @@
+ # As of ROCm 5.0, the version is found in rocm_version.h header file under /opt/rocm/include.
+ rocm_path = os.environ.get('ROCM_HOME') or os.environ.get('ROCM_PATH') or "/opt/rocm"
+ try:
+-    rocm_path = subprocess.check_output(["hipconfig", "--rocmpath"]).decode("utf-8")
++    #rocm_path = subprocess.check_output(["hipconfig", "--rocmpath"]).decode("utf-8")
++    pass
+ except subprocess.CalledProcessError:
+     print(f"Warning: hipconfig --rocmpath failed, assuming {rocm_path}")
+ except (FileNotFoundError, PermissionError, NotADirectoryError):

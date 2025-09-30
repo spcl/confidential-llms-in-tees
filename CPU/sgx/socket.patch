@@ -1,0 +1,10 @@
+--- /home/ubuntu/miniconda3/envs/py310/lib/python3.10/site-packages/neural_compressor/utils/utility.py  2024-06-15 00:33:10.668117290 +0000
++++ /home/ubuntu/miniconda3/envs/py310/lib/python3.10/site-packages/neural_compressor/utils/utility.py  2024-06-15 00:32:42.192115598 +0000
+@@ -272,6 +272,7 @@
+         return self._cores_per_socket
+
+     def get_number_of_sockets(self) -> int:
++        return 2
+         """Get number of sockets in platform."""
+         cmd = "lscpu | grep 'Socket(s)' | cut -d ':' -f 2"
+         if psutil.WINDOWS:

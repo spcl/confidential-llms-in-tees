@@ -1,0 +1,78 @@
+# SPDX-License-Identifier: LGPL-3.0-or-later
+
+# LLM manifest template
+
+loader.entrypoint = "file:{{ gramine.libos }}"
+libos.entrypoint = "{{ entrypoint }}"
+
+sys.stack.size = "8M"
+
+#sgx.debug = true
+#sgx.enable_stats = true
+#sgx.profile.enable = "main"
+#sgx.profile.with_stack = true
+
+loader.log_level = "{{ log_level }}"
+
+loader.env.LD_LIBRARY_PATH = "/lib:{{ arch_libdir }}:/usr/{{ arch_libdir }}"
+loader.env.HOME = "{{ env.HOME }}"
+loader.env.MALLOC_ARENA_MAX = "1"
+
+loader.insecure__use_cmdline_argv = true
+loader.insecure__use_host_env = true
+sys.insecure__allow_eventfd = true
+sys.experimental__enable_flock = true
+
+sys.disallow_subprocesses = true
+loader.insecure__disable_aslr = true
+libos.check_invalid_pointers = false
+#sgx.preheat_enclave = true
+
+fs.mounts = [
+  { path = "{{ entrypoint }}", uri = "file:{{ entrypoint }}" },
+  { path = "/lib", uri = "file:{{ gramine.runtimedir() }}/" },
+  { path = "{{ arch_libdir }}", uri = "file:{{ arch_libdir }}/" },
+  { path = "/usr/{{ arch_libdir }}", uri = "file:/usr/{{ arch_libdir }}/" },
+  { path = "/bin/", uri = "file:/bin/" },
+  { path = "/opt/", uri = "file:/opt/" },
+  { type = "tmpfs", path = "/tmp/" },
+  { path = "/usr/", uri = "file:/usr/" },
+  { path = "/home/ubuntu/", uri = "file:/home/ubuntu/" },
+  { type = "untrusted_shm", path = "/dev/shm/", uri = "dev:/dev/shm/" },
+]
+
+sgx.enclave_size = "64G"
+sgx.max_threads = 256
+sgx.edmm_enable = {{ 'true' if env.get('EDMM', '0') == '1' else 'false' }}
+sgx.nonpie_binary = true
+#sgx.use_exinfo = true
+#sgx.insecure__allow_memfaults_without_exinfo = true
+
+sgx.trusted_files = [
+  "file:{{ entrypoint }}",
+  "file:{{ gramine.libos }}",
+  "file:{{ gramine.runtimedir() }}/",
+  "file:{{ arch_libdir }}/",
+  "file:/usr/{{ arch_libdir }}/",
+]
+
+sgx.allowed_files = [
+  "file:/usr/",
+  "file:/lib/",
+  "file:/bin/",
+  "file:/opt/",
+  "file:/home/ubuntu/",
+  "dev:/dev/shm/",
+]
+
+sgx.cpu_features.avx    = "required"
+sgx.cpu_features.avx512 = "required"
+sgx.cpu_features.amx    = "required"
+
+# Gramine optionally provides patched OpenMP runtime library that runs faster inside SGX enclaves
+# (add `-Dlibgomp=enabled` when configuring the build). Uncomment the line below to use the patched
+# library. LLM's SGX perf overhead decreases on some workloads from 25% to 8% with this patched
+# library. Note that we need to preload the library because LLM's distribution renames
+# libgomp.so to smth like libgomp-7c85b1e2.so.1, so it's not just a matter of searching in the
+# Gramine's Runtime path first, but a matter of intercepting OpenMP functions.
+loader.env.LD_PRELOAD = "/home/ubuntu/miniconda3/envs/py310/lib/libstdc++.so.6.0.32:/home/ubuntu/miniconda3/envs/py310/lib/libiomp5.so:/home/ubuntu/miniconda3/envs/py310/lib/libtcmalloc_minimal.so.4"

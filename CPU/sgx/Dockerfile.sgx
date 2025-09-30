@@ -1,0 +1,54 @@
+# NOTE: To build this you will need a docker version >= 19.03 and DOCKER_BUILDKIT=1
+#
+#       If you do not use buildkit you are not going to have a good time
+#
+#       For reference:
+#           https://docs.docker.com/develop/develop-images/build_enhancements/
+
+FROM ipex-llm:2.2.0
+
+RUN . ./miniconda3/bin/activate && conda activate py310 && \
+    pip uninstall --no-input deepseed && \
+    if [ ! -z ${HTTP_PROXY} ]; then echo "Acquire::http::Proxy \"${HTTP_PROXY}\";\n""Acquire::https::Proxy \"${HTTPS_PROXY}\";" | sudo tee /etc/apt/apt.conf.d/proxy.conf; fi && \
+    sudo apt update && \
+    sudo apt upgrade && \
+    sudo DEBIAN_FRONTEND=noninteractive apt install -y \
+    make \
+    build-essential \
+    autoconf \
+    bison \
+    gawk \
+    nasm \
+    ninja-build \
+    pkg-config \
+    python3 \
+    python3-click \
+    python3-jinja2 \
+    python3-pip \
+    python3-pyelftools \
+    python3-voluptuous \
+    wget \
+    libunwind8 \
+    musl-tools \
+    python3-pytest \
+    libprotobuf-c-dev \
+    protobuf-c-compiler \
+    protobuf-compiler \
+    python3-cryptography \
+    python3-pip python3-protobuf && \
+    python3 -m pip install 'meson>=0.56' 'tomli>=1.1.0' 'tomli-w>=0.4.0'
+
+COPY --chown=ubuntu:ubuntu ./gramine/ ./gramine/
+COPY --chown=ubuntu:ubuntu ./sgx/ ./sgx/
+ENV PYTHONPATH=/home/ubuntu/miniconda3/envs/py310/lib/python3.10/site-packages/:/usr/local/lib/python3.10/site-packages/
+RUN cd / && patch -p0 --ignore-whitespace < ~/sgx/cpuinfo.patch && \
+    patch -p0 --ignore-whitespace < ~/sgx/hipify.patch && \
+    patch -p0 --ignore-whitespace < ~/sgx/socket.patch
+RUN . ./miniconda3/bin/activate && conda activate py310 && \
+    cd gramine && \
+    meson setup build/ --buildtype=release -Ddirect=enabled -Dsgx=enabled -Dsgx_driver=upstream && \
+    ninja -C build/ && \
+    sudo ninja -C build/ install && \
+    cd ../sgx && \
+    gramine-sgx-gen-private-key && \
+    make SGX=1;
