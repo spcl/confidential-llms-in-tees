@@ -14,10 +14,17 @@ BENCHMARK_URL="https://raw.githubusercontent.com/vllm-project/vllm/v${VLLM_VERSI
 
 echo "Installing vllm==${VLLM_VERSION}"
 pip install "vllm==${VLLM_VERSION}"
+# vllm 0.8.5 does not cap transformers; 5.x drops tokenizer attributes the V0
+# engine still reads (LlamaTokenizer has no attribute all_special_tokens_extended).
+# Pin to the last line the 0.8.x engine was tested against.
+pip install "transformers<4.52" "tokenizers<0.22"
 
-echo "Fetching benchmark_latency.py from the v${VLLM_VERSION} tag into ${BENCHMARK_DIR}"
+echo "Fetching benchmark_latency.py and its helper from the v${VLLM_VERSION} tag into ${BENCHMARK_DIR}"
 mkdir -p "${BENCHMARK_DIR}"
 curl -fsSL "${BENCHMARK_URL}" -o "${BENCHMARK_DIR}/benchmark_latency.py"
+# benchmark_latency.py imports benchmark_utils from its own directory; the tag
+# ships it alongside, the wheel does not.
+curl -fsSL "${BENCHMARK_URL%benchmark_latency.py}benchmark_utils.py" -o "${BENCHMARK_DIR}/benchmark_utils.py"
 
 # meta-llama/Llama-2-7b-hf is gated; failing here costs seconds, failing after
 # the sweep starts costs GPU time

@@ -94,7 +94,8 @@ EOF
     exit 1
 fi
 
-vllm_version=$(python3 -c "import vllm; print(vllm.__version__)" 2>/dev/null)
+# importing vllm prints a platform-detection line to stdout; keep only the version
+vllm_version=$(python3 -c "import vllm; print(vllm.__version__)" 2>/dev/null | tail -1)
 if [[ -z "${vllm_version}" ]]; then
     echo "vllm is not importable. Run ./setup_gpu.sh" >&2
     exit 1
