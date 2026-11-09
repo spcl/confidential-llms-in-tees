@@ -288,9 +288,11 @@ pair of single-H100 VMs and keep everything else identical between the two runs:
 | `cGPU` | `Standard_NCC40ads_H100_v5` | 8.90 | yes, CC mode on |
 | `GPU` | `Standard_NC40ads_H100_v5` | 9.08 | no |
 
-The confidential VM is the cheaper of the two, so part of its performance
-overhead is offset when the comparison is made in cost per token rather than in
-throughput.
+Prices are West Europe, Linux, pay-as-you-go, from the Azure Retail Prices API
+with the Spot and Low Priority meters excluded (verified 2026-11-09). The
+confidential SKU is about 2% cheaper than the non-confidential one, so in cost
+per token the confidential VM's performance overhead is slightly offset rather
+than compounded.
 
 ### Setup
 vLLM must be **0.8.5**. The sweep sets `VLLM_USE_V1=0` to force the V0 engine,
